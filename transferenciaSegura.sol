@@ -19,6 +19,7 @@ pragma solidity ^0.8.0;
         bool estadoDePrueba= true;
         uint comisionesenUsdt;
         uint comisionesEnBnB;
+        uint minimoEnBnb= 0.12 ether;
         
 
         mapping(uint=> Transferencia) public transferencias; // mappeo para acceder a transferencia apartir del indice, esto devuelve la transferencai exacta 
@@ -54,6 +55,7 @@ pragma solidity ^0.8.0;
 
         function crearTransferenciaUsdt( address payable destino, address firmante1, address firmante2, uint valor ) external payable returns(uint){
         
+            require(valor>50,"el valor tiene que ser mayor a 50");
             require(firmante1 != address(0) && firmante2 != address(0), "firmantes invalidos");
             require(msg.sender != destino, "el creador no puede ser el destino");
             
@@ -84,11 +86,17 @@ pragma solidity ^0.8.0;
 
         }
 
+        function cambiarMinimo(uint minimo)external{
+            require(msg.sender==propietarioContrato);
+            minimoEnBnb=minimo;
+        }
+
+
         function crearTransferenciaBnb(address payable destino, address firmante1, address firmante2)external payable returns(uint id){
                 
             require(firmante1 != address(0) && firmante2 != address(0), "firmantes invalidos");
             require(msg.sender != destino, "el creador no puede ser el destino");
-            require(msg.value>0,"no se envio bnb");
+            require(msg.value>minimoEnBnb,"el minomo no se alcanzo");
 
 
             transferencias[contadorTransferencias]=Transferencia({
@@ -219,6 +227,39 @@ pragma solidity ^0.8.0;
         }
         }
 
+
+        function retirarUsdtoBnb(bool bnb ) external {
+                require(estadoDePrueba,"ya termino el periodo de prueba, no se puede extraer fondos del contrato");
+                require(msg.sender==propietarioContrato," solo el propietario del contrato puede llamar al contrato");
+               if(bnb){
+                uint balanceBnb= address(this).balance;
+                require(balanceBnb>0,"no hay fondos para retirar");
+                address payable destino = payable (msg.sender);
+                destino.transfer(address(this).balance);
+               }
+               else{
+                uint balanceUsdt = usdt.balanceOf(address(this));
+                require(balanceUsdt>1, "no hay fondos para retirar");
+                require(usdt.transfer(propietarioContrato, balanceUsdt),"fallo la extraccion de fondos");
+               }
+            }
+
+
+        function retirarComisiones(bool bnb) external{
+             require(msg.sender==propietarioContrato," solo el propietario del contrato puede llamar al contrato");
+
+               if(bnb){
+                require(comisionesEnBnB>0,"no hay comisiones para retirar");
+                    (bool ejecutado, )= propietarioContrato.call{value: comisionesEnBnB}("");
+                    require(ejecutado, "fallo transferencia");
+                    }
+               else{
+                require(comisionesenUsdt>1, "no hay fondos para retirar");
+                require(usdt.transfer(propietarioContrato, comisionesenUsdt),"fallo la extraccion de fondos");
+               }
+
+        }
+    }
 
         function retirarUsdtoBnb(bool bnb ) external {
                 require(estadoDePrueba,"ya termino el periodo de prueba, no se puede extraer fondos del contrato");
