@@ -156,18 +156,17 @@ pragma solidity ^0.8.0;
             (bool ejecutado, )= _tx.destino.call{value: valorAEnviar}("");
             require(ejecutado, "fallo transferencia");
             comisionesEnBnB += tarifa;
+             _tx.ejecutada= true;
+            emit TransferenciaEjecutada(idTransferencia);
             }
 
             else {
 
             require(usdt.transfer(_tx.destino, valorAEnviar), "fallo transferencia de usdt");
             comisionesenUsdt+=tarifa;
-        }
-
-            _tx.ejecutada= true;
+             _tx.ejecutada= true;
             emit TransferenciaEjecutada(idTransferencia);
-
-
+        }
         }
 
 
